@@ -15,7 +15,7 @@ pipeline {
             steps {
                 script {
                     echo 'Cloning GitHub repo...'
-                    checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: 'https://github.com/arul434/rag-medical-bot']])                }
+                    checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: 'https://github.com/arul434/rag-medical-bot.git']])                }
             }
         }
 

@@ -14,11 +14,13 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+## Install Python dependencies
+COPY requirements.txt . 
+RUN pip install --no-cache-dir -r requirements.txt
+
 ## Copying all contents from local to container
 COPY . .
 
-## Install Python dependencies
-RUN pip install --no-cache-dir -e .
 
 ## Expose only flask port
 EXPOSE 5000

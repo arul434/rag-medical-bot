@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: medical-chatbot-app
+  labels:
+    app: medical-chatbot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: medical-chatbot
+  template:
+    metadata:
+      labels:
+        app: medical-chatbot
+    spec:
+      containers:
+      - name: medical-chatbot-container
+        image: localhost:5000/medical-chatbot:latest
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 5000
+        env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: llmops-secrets
+              key: HF_TOKEN
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: medical-chatbot-service
+spec:
+  type: ClusterIP
+  selector:
+    app: medical-chatbot
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000

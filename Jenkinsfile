@@ -2,61 +2,48 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'
-        ECR_REPO = 'my-repo'
-        IMAGE_TAG = 'latest'
-        SERVICE_NAME = 'llmops-medical-service'
+        REGISTRY = 'localhost:5000'
+        IMAGE_NAME = 'medical-chatbot'
+        TAG = 'latest'
+        FULL_IMAGE = "${REGISTRY}/${IMAGE_NAME}:${TAG}"
+        DEPLOYMENT_NAME = 'medical-chatbot-app'
+        NAMESPACE = 'default'
     }
 
     stages {
         stage('Clone GitHub Repo') {
             steps {
                 script {
-                    echo 'Cloning GitHub repo to Jenkins...'
-                    checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: 'https://github.com/data-guru0/RAG-MEDICAL-CHATBOT.git']])
+                    echo 'Cloning GitHub repo...'
+                    checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: 'https://github.com/arul434/rag-medical-bot']])                }
+            }
+        }
+
+        stage('Build, Scan, and Push') {
+            steps {
+                script {
+                    echo "Building image: ${FULL_IMAGE}"
+                    sh "docker build -t ${FULL_IMAGE} ."
+
+                    echo "Scanning with Trivy..."
+                    // Scan for vulnerabilities but don't fail the build (exit-code 0 or || true)
+                    sh "trivy image --severity HIGH,CRITICAL --format table ${FULL_IMAGE} || true"
+
+                    echo "Pushing to Local Registry..."
+                    sh "docker push ${FULL_IMAGE}"
                 }
             }
         }
 
-        stage('Build, Scan, and Push Docker Image to ECR') {
+        stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-token']]) {
-                    script {
-                        def accountId = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
-                        def ecrUrl = "${accountId}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.ECR_REPO}"
-                        def imageFullTag = "${ecrUrl}:${IMAGE_TAG}"
-
-                        sh """
-                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ecrUrl}
-                        docker build -t ${env.ECR_REPO}:${IMAGE_TAG} .
-                        trivy image --severity HIGH,CRITICAL --format json -o trivy-report.json ${env.ECR_REPO}:${IMAGE_TAG} || true
-                        docker tag ${env.ECR_REPO}:${IMAGE_TAG} ${imageFullTag}
-                        docker push ${imageFullTag}
-                        """
-
-                        archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
-                    }
-                }
-            }
-        }
-
-         stage('Deploy to AWS App Runner') {
-            steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-token']]) {
-                    script {
-                        def accountId = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
-                        def ecrUrl = "${accountId}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.ECR_REPO}"
-                        def imageFullTag = "${ecrUrl}:${IMAGE_TAG}"
-
-                        echo "Triggering deployment to AWS App Runner..."
-
-                        sh """
-                        SERVICE_ARN=\$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text --region ${AWS_REGION})
-                        echo "Found App Runner Service ARN: \$SERVICE_ARN"
-
-                        aws apprunner start-deployment --service-arn \$SERVICE_ARN --region ${AWS_REGION}
-                        """
-                    }
+                script {
+                    echo "Deploying to Namespace: ${NAMESPACE}"
+                    // Trigger a rollout restart to pull the new image
+                    sh "kubectl rollout restart deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE}"
+                    
+                    // Verify rollout status
+                    sh "kubectl rollout status deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE}"
                 }
             }
         }

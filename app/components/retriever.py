@@ -1,6 +1,5 @@
-from langchain.chains import RetrievalQA
-from langchain_core.prompts import PromptTemplate
-
+from langchain_classic.chains import create_retrieval_chain
+from langchain_classic.prompts import PromptTemplate
 from app.components.llm import load_llm
 from app.components.vector_store import load_vector_store
 
@@ -38,7 +37,7 @@ def create_qa_chain():
         if llm is None:
             raise CustomException("LLM not loaded")
 
-        qa_chain = RetrievalQA.from_chain_type(
+        qa_chain = create_retrieval_chain(
             llm=llm,
             chain_type="stuff",
             retriever=db.as_retriever(search_kwargs={'k': 1}),

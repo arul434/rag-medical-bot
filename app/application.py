@@ -34,8 +34,8 @@ def index():
                 qa_chain = create_qa_chain()
                 if qa_chain is None:
                     raise Exception("QA chain could not be created (LLM or VectorStore issue)")
-                response = qa_chain.invoke({"query" : user_input})
-                result = response.get("result" , "No response")
+                response = qa_chain.invoke({"input" : user_input})
+                result = response.get("answer" , "No response")
 
                 messages.append({"role" : "assistant" , "content" : result})
                 session["messages"] = messages
@@ -53,7 +53,7 @@ def clear():
     return redirect(url_for("index"))
 
 if __name__=="__main__":
-    app.run(host="0.0.0.0" , port=5000 , debug=False , use_reloader = False)
+    app.run(host="0.0.0.0" , port=8080 , debug=False , use_reloader = False)
 
 
 

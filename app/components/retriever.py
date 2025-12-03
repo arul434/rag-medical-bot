@@ -17,13 +17,13 @@ Context:
 {context}
 
 Question:
-{question}
+{input}
 
 Answer:
 """
 
 def set_custom_prompt():
-    return PromptTemplate(template=CUSTOM_PROMPT_TEMPLATE,input_variables=["context" , "question"])
+    return PromptTemplate(template=CUSTOM_PROMPT_TEMPLATE,input_variables=["context" , "input"])
 
 def create_qa_chain():
     try:
